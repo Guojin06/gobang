@@ -1,0 +1,9 @@
+1.析构和构造函数啥时候用到，不用行不行，场景是啥，为啥要有析构和构造函数
+2.matcher(room_manager *rm, user_table *ut, online_manager *om): 
+            _rm(rm), _ut(ut), _om(om),
+            _th_normal(std::thread(&matcher::th_normal_entry, this)),
+            _th_high(std::thread(&matcher::th_high_entry, this)),
+            _th_super(std::thread(&matcher::th_super_entry, this)){
+            DLOG("游戏匹配模块初始化完毕....");
+        }
+

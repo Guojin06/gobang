@@ -1,0 +1,20 @@
+数据管理模块：
+1.数据库表的设计
+用户信息表的设计：id，username,password,score,total_count,win_count
+2.数据管理模块的封装与实现
+实现一个我们自己的mysql客户端来访问服务器进行数据的操作
+针对我们管理的每一张表都设计一个类，通过对实例化的对象管理指定的数据库表
+class user_table{
+    private:
+    MYSQL*_mysql;//mysql操作句柄
+    std::mutex_mutex;//互斥锁保护数据库的访问操作
+    publc:
+    user_table();
+    ~user_table();
+    bool insert(Json:Value &user);//注册时新增用户
+    bool login(Json:Value &user);//登录验证，并返回详细的用户信息
+    bool select_by_name(const std::string &name,Json::Value &user);//通过用户名获取用户信息
+    bool select_by_id(int id,Json::Value &user);//通过用户id来获取用户信息
+    bool win(int id);//胜利时天梯分数增加，战斗场次增加，胜利场次增加
+    bool lose(int id);//失败时天梯分数减少，战斗场次增加，其他不变
+}

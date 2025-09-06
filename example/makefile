@@ -1,0 +1,7 @@
+# mysql: mysql.c
+# 	gcc $^ -o $@ -L/usr/lib/x86_64-linux-gnu -lmysqlclient
+# josn: json.cpp
+# 	g++ -std=c++11 $^ -o $@ -I/usr/include/jsoncpp/ -L/usr/lib/x86_64-linux-gnu/ -ljsoncpp -lpthread -lboost_system
+
+wsserver: wsserver.cpp
+	g++ -std=c++11 $^ -o $@ -I/usr/include/jsoncpp/ -L/usr/lib/x86_64-linux-gnu/ -ljsoncpp -lpthread -lboost_system

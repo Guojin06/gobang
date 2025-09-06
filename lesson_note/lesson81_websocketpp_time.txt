@@ -1,0 +1,5 @@
+websocketpp中定时器的使用：
+    // 其中的定时器基于boost::asio::steady_timer
+timer_ptr set_timer(long duration,timer_handler callback);//websocketpp提供的定时器，以毫秒为单位，两参数，1延迟间隔时间，2可调用对象
+
+

@@ -1,0 +1,33 @@
+session（会话）管理模块：
+1.session模块
+2.session管理模块
+session的了解：
+    使用cookie和session进行http在短链接通信的情况下进行用户状态管理。
+    但是这个服务器上管理的session都会有过期时间，超过时间了，就会将对应的session删除
+    每次客户端和服务端的通信都需要延长session的过期时间
+
+(客户端首次访问服务器时，服务器生成ssid和对应的session并且将这个映射关系保存到map中ssid->session，然后向客户端返回一个ssid。
+    后续访问时，客户端携带ssid，服务器就会查找对应的session（在map中使用ssid查找map，返回查找结果）进行其他操作，最后返回处理响应)。
+
+
+
+session模块：保存客户端的用户状态信息
+    1.有自己的标识：ssid
+    2.用户的状态信息。
+    3.用户ID
+    4.session相关的定时器（通过是否包含有定时器，确定当前session是否已经添加了定时销毁任务）
+
+session管理模块：（对session的操作）
+    1.创建session
+    2.为session设置过期时间
+    3.获取session
+    4.销毁session（过期自动销毁）
+
+
+
+
+    1）创建session管理的数据
+        1.ssid的计数器
+        2.互斥锁（计数器涉及线程安全，得加锁保护）
+        3.管理器 unordered_map<ssid,session_ptr>使用map数据结构和智能指针对多个ssid进行管理
+        4.websocket的server的对象--用于添加定时任务

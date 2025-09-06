@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test WebSocket</title>
+</head>
+<body>
+    <input type="text" id="message">
+    <button id="submit">提交</button>
+    <script>
+        let websocket = new WebSocket('ws://8.134.136.216:8085');
+
+        websocket.onopen = function() {
+            console.log('WebSocket连接成功');
+        };
+
+        websocket.onmessage = function(event) {
+            console.log('收到消息：' + event.data);
+        };
+
+        websocket.onerror = function(error) {
+            console.error('连接异常：', error);
+        };
+
+        websocket.onclose = function(event) {
+            console.log('连接关闭，状态码：', event.code);
+        };
+
+        let input = document.querySelector('#message');
+        let button = document.querySelector('#submit');
+        button.onclick = function() {
+            if (websocket.readyState === WebSocket.OPEN) {
+                console.log('发送消息：' + input.value);
+                websocket.send(input.value);
+                input.value = '';
+            } else {
+                console.error('WebSocket未连接');
+            }
+        };
+    </script>
+</body>
+</html>

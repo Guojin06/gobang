@@ -1,0 +1,8 @@
+json_util
+1.json 序列化:将多个数据对象，进行序列化得到一个json格式的字符串
+2.json反序列化： 将json格式化字符串，反序列化得到多个数据对象
+class json_util{
+    public:
+        static bool serialize(const Json::Value &root, std::string&string)
+        static bool deserialize(const std::string &string, Json::Value &root)
+}
