@@ -30,3 +30,15 @@ node_modules/
 # 备份文件
 *.bak
 *.backup
+
+# 学习文档（仅本地保留）
+learn/
+lesson_note/
+example/
+
+# 原始项目（仅本地保留）
+original_project/
+
+# 测试文件
+test*
+*.pdf
