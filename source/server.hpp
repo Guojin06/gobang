@@ -23,6 +23,11 @@ class gobang_server{
             //1. 获取到请求uri-资源路径，了解客户端请求的页面文件名称
             websocketpp::http::parser::request req = conn->get_request();
             std::string uri = req.get_uri();
+            //1.5. 去掉URI中的查询参数部分 (如 ?room_id=1)
+            size_t query_pos = uri.find('?');
+            if (query_pos != std::string::npos) {
+                uri = uri.substr(0, query_pos);
+            }
             //2. 组合出文件的实际路径   相对根目录 + uri
             std::string realpath = _web_root + uri;
             //3. 如果请求的是个目录，增加一个后缀  login.html,    /  ->  /login.html
@@ -263,14 +268,7 @@ class gobang_server{
             if (ssp.get() == nullptr) {
                 return;
             }
-            //2. 当前用户是否已经在在线用户管理的游戏房间或者游戏大厅中---在线用户管理
-            if (_om.is_in_game_hall(ssp->get_user()) || _om.is_in_game_room(ssp->get_user())) {
-                resp_json["optype"] = "room_ready";
-                resp_json["reason"] = "玩家重复登录！";
-                resp_json["result"] = false;
-                return ws_resp(conn, resp_json);
-            }
-            //3. 判断当前用户是否已经创建好了房间 --- 房间管理
+            //2. 判断当前用户是否已经创建好了房间 --- 房间管理
             room_ptr rp = _rm.get_room_by_uid(ssp->get_user());
             if (rp.get() == nullptr) {
                 resp_json["optype"] = "room_ready";
@@ -278,7 +276,18 @@ class gobang_server{
                 resp_json["result"] = false;
                 return ws_resp(conn, resp_json);
             }
-            //4. 将当前用户添加到在线用户管理的游戏房间中
+            //3. 检查用户是否已经在游戏房间中（避免重复连接）
+            if (_om.is_in_game_room(ssp->get_user())) {
+                resp_json["optype"] = "room_ready";
+                resp_json["reason"] = "玩家已经在游戏房间中！";
+                resp_json["result"] = false;
+                return ws_resp(conn, resp_json);
+            }
+            //4. 如果用户在游戏大厅中，先将其从大厅移除
+            if (_om.is_in_game_hall(ssp->get_user())) {
+                _om.exit_game_hall(ssp->get_user());
+            }
+            //5. 将当前用户添加到在线用户管理的游戏房间中
             _om.enter_game_room(ssp->get_user(), conn);
             //5. 将session重新设置为永久存在
             _sm.set_session_expire_time(ssp->ssid(), SESSION_FOREVER);
@@ -407,7 +416,9 @@ class gobang_server{
                 return ws_resp(conn, resp_json);
             }
             DLOG("房间：收到房间请求，开始处理....");
-            //4. 通过房间模块进行消息请求的处理
+            //4. 将真实的用户ID添加到请求中
+            req_json["uid"] = (Json::UInt64)ssp->get_user();
+            //5. 通过房间模块进行消息请求的处理
             return rp->handle_request(req_json);
         }
         void wsmsg_callback(websocketpp::connection_hdl hdl, wsserver_t::message_ptr msg) {

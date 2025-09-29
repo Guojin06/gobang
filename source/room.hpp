@@ -102,6 +102,8 @@ class room {
                 return json_resp;
             }
             int cur_color = cur_uid == _white_id ? CHESS_WHITE : CHESS_BLACK;
+            printf("颜色判断: cur_uid=%lu, _white_id=%lu, _black_id=%lu, cur_color=%d\n", cur_uid, _white_id, _black_id, cur_color);
+            fflush(stdout);
             _board[chess_row][chess_col] = cur_color;
             // 4. 判断是否有玩家胜利（从当前走棋位置开始判断是否存在五星连珠）
             uint64_t winner_id = check_win(chess_row, chess_col, cur_color);
@@ -110,6 +112,9 @@ class room {
             }
             json_resp["result"] = true;
             json_resp["winner"] = (Json::UInt64)winner_id;
+            json_resp["chess_color"] = cur_color;  // 添加棋子颜色信息
+            json_resp["white_id"] = (Json::UInt64)_white_id;  // 添加白棋玩家ID
+            json_resp["black_id"] = (Json::UInt64)_black_id;  // 添加黑棋玩家ID
             return json_resp;
         }
         /*处理聊天动作*/

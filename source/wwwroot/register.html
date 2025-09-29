@@ -31,9 +31,50 @@
             <div class="row">
                 <button id="submit">提交</button>
             </div>
+            <!-- 登录链接 -->
+            <div class="row">
+                <a href="/login.html" style="text-decoration: none; color: #007bff;">已有账号？点击登录</a>
+            </div>
         </div>
     </div> 
 
     <script src="js/jquery.min.js"></script>
+    <script>
+        function register() {
+            // 1. 获取输入框中的用户名和密码，并组织json对象
+            var register_info = {
+                username: document.getElementById("user_name").value,
+                password: document.getElementById("password").value
+            };
+            
+            // 验证输入
+            if (!register_info.username || !register_info.password) {
+                alert("请输入用户名和密码");
+                return;
+            }
+            
+            // 2. 通过ajax向后台发送注册请求
+            $.ajax({
+                url: "/reg",
+                type: "post",
+                data: JSON.stringify(register_info),
+                contentType: "application/json",
+                success: function(result) {
+                    // 3. 注册成功后跳转到登录页面
+                    alert("注册成功！请登录");
+                    window.location.assign("/login.html");
+                },
+                error: function(xhr) {
+                    // 4. 注册失败，提示错误信息
+                    alert("注册失败: " + xhr.responseText);
+                    document.getElementById("user_name").value = "";
+                    document.getElementById("password").value = "";
+                }
+            });
+        }
+        
+        // 给提交按钮绑定点击事件
+        $("#submit").click(register);
+    </script>
 </body>
 </html>

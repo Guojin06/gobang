@@ -25,5 +25,130 @@
     </div>
 
     <script src="./js/jquery.min.js"></script>
+    <script>
+        // WebSocket连接
+        var ws = null;
+        var user_info = null;
+        
+        // 页面加载时初始化
+        $(document).ready(function() {
+            // 建立WebSocket连接
+            connectWebSocket();
+            
+            // 绑定匹配按钮事件
+            $("#match-button").click(function() {
+                if ($(this).text() === "开始匹配") {
+                    startMatch();
+                } else {
+                    stopMatch();
+                }
+            });
+        });
+        
+        function connectWebSocket() {
+            var wsUrl = "ws://localhost:8085/hall";
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                console.log("WebSocket连接成功");
+                // WebSocket连接成功后，服务器会自动发送hall_ready消息
+            };
+            
+            ws.onmessage = function(event) {
+                var data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            ws.onclose = function() {
+                console.log("WebSocket连接关闭");
+            };
+            
+            ws.onerror = function(error) {
+                console.log("WebSocket错误:", error);
+            };
+        }
+        
+        function getUserInfo() {
+            // 从登录信息中获取用户信息，或从服务器状态获取
+            // 这个函数现在不需要了，因为服务器会在WebSocket连接时发送用户信息
+        }
+        
+        function startMatch() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert("连接尚未建立，请稍后再试");
+                return;
+            }
+            $("#match-button").text("匹配中...");
+            var msg = {
+                optype: "match_start"
+            };
+            ws.send(JSON.stringify(msg));
+        }
+        
+        function stopMatch() {
+            $("#match-button").text("开始匹配");
+            var msg = {
+                optype: "match_stop"
+            };
+            ws.send(JSON.stringify(msg));
+        }
+        
+        function handleWebSocketMessage(data) {
+            console.log("收到WebSocket消息:", data);
+            switch(data.optype) {
+                case "hall_ready":
+                    if (data.result) {
+                        console.log("进入游戏大厅成功");
+                        // 暂时显示默认用户信息，避免404错误
+                        $("#username").text("玩家");
+                        $("#score").text("1000");
+                        $("#total").text("0");
+                        $("#win").text("0");
+                    } else {
+                        alert("进入游戏大厅失败: " + data.reason);
+                    }
+                    break;
+                case "match_start":
+                    $("#match-button").text("取消匹配");
+                    break;
+                case "match_stop":
+                    $("#match-button").text("开始匹配");
+                    break;
+                case "match_success":
+                    // 匹配成功，跳转到游戏房间
+                    window.location.href = "/game_room.html?room_id=" + data.room_id;
+                    break;
+            }
+        }
+        
+        function fetchUserInfo() {
+            // 通过AJAX获取用户信息
+            $.ajax({
+                url: "/user_info",
+                type: "get",
+                success: function(result) {
+                    if (result.result) {
+                        user_info = result;
+                        updateUserDisplay();
+                    }
+                },
+                error: function(xhr) {
+                    console.log("获取用户信息失败:", xhr.responseText);
+                    // 使用默认显示
+                    updateUserDisplay();
+                }
+            });
+        }
+        
+        function updateUserDisplay() {
+            if (user_info) {
+                var displayText = "玩家: " + user_info.username + 
+                                " 分数: " + user_info.score + "</br>" +
+                                "比赛场次: " + user_info.total_count + 
+                                " 获胜场次: " + user_info.win_count;
+                $("#screen").html(displayText);
+            }
+        }
+    </script>
 </body>
 </html>

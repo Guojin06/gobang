@@ -111,6 +111,7 @@ class matcher {
                 Json::Value resp;
                 resp["optype"] = "match_success";
                 resp["result"] = true;
+                resp["room_id"] = (Json::UInt64)rp->id();
                 std::string body;
                 json_util::serialize(resp, body);
                 conn1->send(body);

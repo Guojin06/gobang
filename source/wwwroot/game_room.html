@@ -34,6 +34,133 @@
         let chess = document.getElementById('chess');
         //获取chess控件区域2d画布
         let context = chess.getContext('2d');
+        let ws = null;
+        let room_id = null;
+        let self_color = 0; // 0-未知, 1-白子, 2-黑子
+        let current_turn = 1; // 当前轮次，1-白棋回合, 2-黑棋回合
+        let is_my_turn = false; // 是否轮到自己
+        
+        // 获取URL参数
+        function getUrlParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+        
+        // WebSocket连接
+        function connectWebSocket() {
+            room_id = getUrlParam('room_id');
+            if (!room_id) {
+                alert('房间ID无效');
+                return;
+            }
+            
+            const wsUrl = "ws://localhost:8085/room";
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                console.log('WebSocket连接已建立');
+                // WebSocket连接建立后，服务器会自动发送room_ready消息
+                // 不需要手动发送enter_room请求
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket连接已关闭');
+                document.getElementById('screen').innerHTML = '连接已断开';
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket错误:', error);
+                document.getElementById('screen').innerHTML = '连接错误';
+            };
+        }
+        
+        // 处理WebSocket消息
+        function handleWebSocketMessage(data) {
+            console.log('收到消息:', data);
+            console.log('消息详情:', JSON.stringify(data, null, 2));
+            switch(data.optype) {
+                case "room_ready":
+                    if (data.result) {
+                        // 确定自己的颜色
+                        const my_uid = data.uid;
+                        console.log('房间准备完毕 - 我的信息:', {my_uid, white_id: data.white_id, black_id: data.black_id});
+                        if (my_uid == data.white_id) {
+                            self_color = 1; // 白子
+                            is_my_turn = true; // 白棋先行
+                            document.getElementById('screen').innerHTML = `你是白子(ID:${my_uid})，轮到你了！`;
+                        } else {
+                            self_color = 2; // 黑子
+                            is_my_turn = false; // 等待白棋
+                            document.getElementById('screen').innerHTML = `你是黑子(ID:${my_uid})，等待对手...`;
+                        }
+                        current_turn = 1; // 游戏开始，白棋先行
+                    } else {
+                        document.getElementById('screen').innerHTML = '进入房间失败: ' + data.reason;
+                    }
+                    break;
+                case "put_chess":
+                    if (data.result) {
+                        // 绘制棋子
+                        const chess_row = data.row;
+                        const chess_col = data.col;
+                        const chess_color = data.chess_color;  // 服务器现在会返回棋子颜色
+                        
+                        console.log('绘制棋子:', {chess_row, chess_col, chess_color});
+                        
+                        const is_white = (chess_color == 1);
+                        console.log('棋子颜色判断:', {chess_color, is_white});
+                        oneStep(chess_col, chess_row, is_white);
+                        chessBoard[chess_row][chess_col] = chess_color;
+                        
+                        // 切换回合
+                        current_turn = (current_turn == 1) ? 2 : 1;
+                        is_my_turn = (current_turn == self_color);
+                        
+                        if (data.winner && data.winner != 0) {
+                            document.getElementById('screen').innerHTML = data.reason;
+                        } else {
+                            if (is_my_turn) {
+                                document.getElementById('screen').innerHTML = '轮到你了！';
+                            } else {
+                                document.getElementById('screen').innerHTML = '等待对手...';
+                            }
+                        }
+                    } else {
+                        document.getElementById('screen').innerHTML = '走棋失败: ' + data.reason;
+                    }
+                    break;
+                case "chat":
+                    if (data.result) {
+                        // 显示聊天消息
+                        const chatShow = document.getElementById('chat_show');
+                        
+                        // 第一次收到消息时清除示例消息
+                        if (chatShow.children.length <= 4) { // 包含示例消息和<br>标签
+                            chatShow.innerHTML = '';
+                        }
+                        
+                        const msgElement = document.createElement('p');
+                        msgElement.textContent = data.message;
+                        msgElement.style.margin = '5px 0';
+                        msgElement.style.padding = '5px';
+                        msgElement.style.backgroundColor = '#f0f0f0';
+                        msgElement.style.borderRadius = '5px';
+                        chatShow.appendChild(msgElement);
+                        chatShow.scrollTop = chatShow.scrollHeight;
+                    } else {
+                        alert('发送消息失败: ' + data.reason);
+                    }
+                    break;
+                default:
+                    console.log('未知消息类型:', data.optype);
+                    break;
+            }
+        }
         function initGame() {
             initBoard();
             // 背景图片
@@ -70,7 +197,14 @@
         }
         //绘制棋子
         function oneStep(i, j, isWhite) {
-            if (i < 0 || j < 0) return;
+            // 参数验证
+            if (typeof i !== 'number' || typeof j !== 'number' || 
+                !isFinite(i) || !isFinite(j) || 
+                i < 0 || j < 0 || i >= BOARD_ROW_AND_COL || j >= BOARD_ROW_AND_COL) {
+                console.error('oneStep参数错误:', {i, j, isWhite});
+                return;
+            }
+            
             context.beginPath();
             context.arc(15 + i * 30, 15 + j * 30, 13, 0, 2 * Math.PI);
             context.closePath();
@@ -89,6 +223,19 @@
         }
         //棋盘区域的点击事件
         chess.onclick = function (e) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert("连接未建立！");
+                return;
+            }
+            if (self_color == 0) {
+                alert("游戏尚未开始！");
+                return;
+            }
+            if (!is_my_turn) {
+                alert("还没有轮到你！");
+                return;
+            }
+            
             let x = e.offsetX;
             let y = e.offsetY;
             // 注意, 横坐标是列, 纵坐标是行
@@ -99,9 +246,62 @@
                 alert("当前位置已有棋子！");
                 return;
             }
-            oneStep(col, row, true);
+            
+            // 发送走棋请求 - 使用服务器期望的协议
+            const req = {
+                optype: "put_chess",
+                room_id: parseInt(room_id),
+                row: row,
+                col: col
+                // uid会由服务器从session中自动添加
+            };
+            ws.send(JSON.stringify(req));
+            
+            document.getElementById('screen').innerHTML = '等待服务器响应...';
         }
-        initGame();
+        
+        // 发送聊天消息
+        function sendChatMessage() {
+            const chatInput = document.getElementById('chat_input');
+            const message = chatInput.value.trim();
+            
+            if (!message) {
+                alert('请输入消息内容');
+                return;
+            }
+            
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('连接未建立');
+                return;
+            }
+            
+            const req = {
+                optype: "chat",
+                room_id: parseInt(room_id),
+                message: message
+            };
+            
+            ws.send(JSON.stringify(req));
+            chatInput.value = '';
+        }
+        
+        // 初始化游戏并连接WebSocket
+        function init() {
+            initGame();
+            connectWebSocket();
+            
+            // 绑定聊天按钮事件
+            document.getElementById('chat_button').onclick = sendChatMessage;
+            
+            // 绑定回车键发送消息
+            document.getElementById('chat_input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendChatMessage();
+                }
+            });
+        }
+        
+        init();
     </script>
 </body>
 </html>
